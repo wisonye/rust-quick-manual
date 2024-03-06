@@ -1,0 +1,78 @@
+* =Reference= and =Raw pointer=
+
+** =Reference=
+
+- It's just a pointer value, it points to somewhere else in the memory.
+
+- It has the type restriction, that's why it's always marked as =&<T>= or =&mut <T>=. It means a pointer to the particular type =<T>=. If you try to point to another type of value, the compiler won't let you pass.
+
+- You can use =var_name= to access the value rather than writing =*var_name= even you know it's a pointer! That's because =rust= always dereferences for you by default.
+
+- At any given time, you can have either one mutable reference or any number of immutable references!!!
+
+- References must always be valid!!!
+
+For more details plz have a look at the links below:
+
+[[https://doc.rust-lang.org/book/ch04-02-references-and-borrowing.html][References and Borrowing]]
+
+[[https://doc.rust-lang.org/std/primitive.reference.html][Primitive Type Reference]]
+
+
+** =Raw pointer type=
+
+- It's like an =unsafe= version of =Reference=, as it's *NOT* guaranteed to be valid all the time. When you try to access where it points to, maybe the value had been dropped already.
+
+- You only can get =*const T= from an immutable reference =&<T>=!!!
+
+- You only can get =*mut T= from a mutable reference =&mut <T>=!!!
+
+- When you try to dereference the value from =Raw pointer=, the code must be wrapped in =unsafe= block or function, as not sure the value still be there when your code runs.
+
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  struct Person { age: u32 }
+
+  fn main() {
+      let wison = Person { age: 40 };
+      let immutable_ref_to_wison = &wison;
+
+      // 2 ways to get back a raw pointer type from a immutable reference
+      let raw_pointer_to_wison = &wison as *const Person;
+      let raw_pointer_to_wison_2: *const Person = &wison;
+
+      // The code below should print the same memory address, like: 0x7fff5bc7505c
+      // Use `{:p}` can print the reference pointer value (not the value that points to )
+      println!("immutable_ref_to_wison: {:p}", immutable_ref_to_wison);
+      println!("raw_pointer_to_wison: {:?}", raw_pointer_to_wison);
+      println!("raw_pointer_to_wison_2: {:?}", raw_pointer_to_wison_2);
+
+      unsafe {
+          // 1. For raw pointer type, you have to do dereference manually 
+          //    by calling `*var_name` if you want to access the value it 
+          //    points to.
+          //
+          // 2. You need to wrap the dereference code inside `unsafe` block or function.
+          println!("The value pointed to: {}", (*raw_pointer_to_wison).age);
+      }
+
+
+
+
+      // For getting changeable raw pointer type, you have to get it from mutable reference.
+      let mut mike = Person { age: 10 };
+      let changeable_raw_pointer_to_mike: *mut Person = &mut mike;
+
+      // Then you can change its value right now
+      unsafe {
+          println!("The value pointed to before change: {}", (*changeable_raw_pointer_to_mike).age);
+
+          (*changeable_raw_pointer_to_mike).age = 11;
+          println!("The value pointed to after change: {}", (*changeable_raw_pointer_to_mike).age);
+      }
+  }
+#+END_SRC
+
+For more details and use cases plz have a look at [[https://pramode.in/2016/09/13/using-unsafe-tricks-in-rust/][Using unsafe tricks to examine Rust data structure layout]]
+

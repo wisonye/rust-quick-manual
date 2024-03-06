@@ -1,0 +1,301 @@
+* =Array=, =Vec= and =Iterator=
+
+** What's an array and how to init values
+
+Array is primitive type and fixed-size: =[T; N]=:
+
+- =T=: the element type.
+- =N=: fixed array size, must be a non-negative compile-time constant value.
+
+
+You got a few ways to init an array:
+
+#+BEGIN_SRC rust
+  //
+  // Init with all elements
+  //
+  let arr1 = [1, 2, 3, 4, 5];
+
+  //
+  // Init with first element and size
+  //
+  let arr2 = [0x0A; 5];
+
+  //
+  // Init with all elements, first element specific type
+  //
+  let arr3 =  [1u8, 2, 3, 4, 5];
+
+  //
+  // Init with first element and size, first element specific type
+  //
+  let arr4 = [0x0Ausize; 5];
+  println!(">>> arr1 type: {},\t data: {arr1:?}", std::any::type_name_of_val(&arr1));
+  println!(">>> arr2 type: {},\t data: {arr2:?}", std::any::type_name_of_val(&arr2));
+  println!(">>> arr3 type: {},\t\t data: {arr3:?}", std::any::type_name_of_val(&arr3));
+  println!(">>> arr4 type: {},\t data: {arr4:?}", std::any::type_name_of_val(&arr4));
+#+END_SRC
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> arr1 type: [i32; 5],	 data: [1, 2, 3, 4, 5]
+  >>> arr2 type: [i32; 5],	 data: [10, 10, 10, 10, 10]
+  >>> arr3 type: [u8; 5],	 data: [1, 2, 3, 4, 5]
+  >>> arr4 type: [usize; 5], data: [10, 10, 10, 10, 10]
+#+END_SRC
+
+
+** What's a Vec and how to init values
+
+Dynamic array (Vector) generic on =T=: =Vec<T>=
+
+You got a few ways to init a Vec:
+
+#+BEGIN_SRC rust
+  let vec1 = Vec::<u16>::new();
+  let vec2 = Vec::<u16>::with_capacity(10);
+  let vec3 = vec![1, 2, 3, 4, 5];
+  let vec4 = vec![1u32, 2, 3, 4, 5];
+  let vec5 = vec![0x0A, 5];
+  let vec6 = vec![0x0Ausize, 5];
+  println!(">>> vec1 type: {},\t data: {vec1:?}", std::any::type_name_of_val(&vec1));
+  println!(">>> vec2 type: {},\t data: {vec2:?}", std::any::type_name_of_val(&vec2));
+  println!(">>> vec3 type: {},\t data: {vec3:?}", std::any::type_name_of_val(&vec3));
+  println!(">>> vec4 type: {},\t data: {vec4:?}", std::any::type_name_of_val(&vec4));
+  println!(">>> vec5 type: {},\t data: {vec5:?}", std::any::type_name_of_val(&vec5));
+  println!(">>> vec6 type: {},\t data: {vec6:?}", std::any::type_name_of_val(&vec6));
+
+#+END_SRC
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> vec1 type: alloc::vec::Vec<u16>,	 data: []
+  >>> vec2 type: alloc::vec::Vec<u16>,	 data: []
+  >>> vec3 type: alloc::vec::Vec<i32>,	 data: [1, 2, 3, 4, 5]
+  >>> vec4 type: alloc::vec::Vec<u32>,	 data: [1, 2, 3, 4, 5]
+  >>> vec5 type: alloc::vec::Vec<i32>,	 data: [10, 5]
+  >>> vec6 type: alloc::vec::Vec<usize>,	 data: [10, 5]
+#+END_SRC
+
+
+** How to loop the array by using =for= loop
+
+Pay attention that =for= loop also will cause ownership taken:
+
+*** If you don't need the the =index=, then:
+
+#+BEGIN_SRC rust
+  //
+  // Make sure use the `&` which not take the ownership!
+  //
+  for &temp_byte in array.iter() {}
+#+END_SRC
+
+
+*** If you need the =index=, then:
+
+#+BEGIN_SRC rust
+  //
+  // Make sure use the `&` which not take the ownership!
+  //
+  for (temp_index, &temp_byte) in buffer.iter().enumerate() {}
+#+END_SRC
+
+
+** How to convert =vec= to =array=?
+
+Just create a full slice of the =vec=, like:
+
+#+BEGIN_SRC rust
+  let test_vec = vec![0x00; 10];
+  let test_arr = &test_vec[..];
+#+END_SRC
+
+If you forgot the ~&~ when creating a slice from a =Vec=, then you will see the following error:
+
+#+BEGIN_SRC bash
+  error[E0277]: the size for values of type `[{integer}]` cannot be known at compilation time
+#+END_SRC
+
+That's because slicing happens at runtime, rust compiler doesn't know the actual size of =test_var= at compile time, it's NOT allowed to happen:)
+
+
+** How to convert =array= to =vec= (with copy all element)?
+
+#+BEGIN_SRC rust
+  let test_arr = [0xAA; 10];
+  let test_vec = test_arr.to_vec();
+#+END_SRC
+
+=Tips=: Any =Slice= can call =.to_vec()= to clone as =Vec<T>=.
+
+
+** How to find index?
+
+#+BEGIN_SRC rust
+  let buffer = [0x00; 10];
+
+  // Get the actual index or `-1` (if not found)
+  let found_begin_index = match buffer.iter().position(|&byte| byte == 0x7E) {
+      Some(index) => index as i16,
+      None => -1,
+  };
+
+  // If want to know whether it matches or not
+  let has_index = buffer.iter().position(|&byte| byte == 0x7E) != None;
+#+END_SRC
+
+
+** How to copy apart from?
+
+#+BEGIN_SRC rust
+  let mut bytes = [0x00u8; 10];
+  for index in 0..10 {
+      bytes[index] = 0x00 + index as u8;
+  }
+
+  // println!("bytes: {:?}", bytes);
+  // print_in_array(&bytes);
+
+  let start_copy_index = 1;
+  let end_copy_index = start_copy_index + 5; // How much elements you want to copy
+  let copyied_bytges = &bytes[start_copy_index..end_copy_index];
+  println!("copyied_bytges: {copyied_bytges:?}");
+#+END_SRC
+
+
+** How to copy another =vec<T>= into =vec<T>=?
+
+#+BEGIN_SRC rust
+  let source_buffer = vec![0x0B; 3];
+  let mut result_buffer = vec![0x00; 10];
+
+  // Set part of `vec<T>`
+  result_buffer[0] = 0x0A;
+
+  // Copy `source_buffer` into index 1
+  let _ = result_buffer
+      .splice(1..source_buffer.len() - 1, source_buffer.iter().cloned())
+      .collect::<Vec<u8>>();
+
+  // Set part of `vec<T>`
+  result_buffer[4] = 0x0C;
+
+  println!("result_buffer: {:?}", result_buffer);
+#+END_SRC
+
+
+** How to do =filter= and =map= on =array/vector=?
+
+Use =.iter()= to get back a =std::iter::Iterator=, then you can call many useful methods below:
+
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.any][any]] - Check has/include or not
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.cloned][cloned]] - Copy all of them
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.collect][collect]] - Take all prev result and become a `vec<T>`
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.enumerate][enumerate]] - Get back pair `(index, value)`
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.filter][filter]]
+- find
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.for_each ][for_each]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.last][last]]
+- [[t][inspect]] - Like `tap` in `RxJS`, useful for printing the debug info after the prev operator done.
+- map
+- position - get back the index when condition is `true`
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.flatten][flatten]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.flat_map][flat_map]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.fold][fold]] - Sum the value together
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.rev][rev]] - Reverse
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.scan][scan]] - Sum the value with init value, like `reduce` in `JS array`.
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.skip][skip]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.skip_while][skip_while]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.take][take]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.take_while][take_while]]
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.sum][sum]] - Sum the value together
+- [[https://doc.rust-lang.org/std/iter/trait.Iterator.html#method.zip][zip]] - Combine 2 iterators into a single iterator of pairs.
+
+#+BEGIN_SRC rust
+  // Define test struct
+  #[derive(Debug)]
+  struct Person {
+      name: String,
+      age: u8,
+  }
+
+  // Create a `struct` instance array
+  let person_list = [
+      Person {
+          name: "Wison Ye".to_string(),
+          age: 40,
+      },
+      Person {
+          name: "David Ye".to_string(),
+          age: 10,
+      },
+      Person {
+          name: "Kin Hong".to_string(),
+          age: 30,
+      },
+  ];
+
+  println!("person_list: {:#?}", person_list);
+
+  // Try to filter the result
+  let matched_persons: Vec<&Person> = person_list
+      // Get back the `Iterator` instance
+      .iter()
+      //`filter` is a closure (anonymous function)
+      // which always borrow immutable reference without `&`!!!
+      .filter(|temp_person| {
+          // The `temp_person` here is an immutable reference to the
+          // particular `Person` instance inside the array/vec!!!
+          // For proving that, you can accept the `name` by
+          // `dereferening` like `(*temp_person).name`
+          println!("temp_person: {:?}", temp_person);
+
+          // Return bool for the `filter` condition
+          temp_person.name.find("Ye").is_some()
+      })
+      // After you `collect`, the return type will be `Vec<&Person>`,
+      // as all elements inside there are immutable reference!!!
+      .collect();
+
+  println!("matched_persons: {:#?}", matched_persons);
+
+  // Here `person_list` still works, as nobody takes the ownership.
+  println!("person_list: {:#?}", person_list);
+
+
+  let map_person: Vec<u8> = person_list
+      .iter()
+      .map(|temp_person| temp_person.age)
+      // After `map` and `collect`, you got different type `Vec<u8>`
+      .collect();
+  println!("map_person: {:#?}", map_person);
+#+END_SRC
+
+
+If you want to =filter= back the =Vec<Person>= rather than =Vec<&Person>=, then you need to =clone()= that:
+
+#+BEGIN_SRC rust
+  // First, you need to apply the default `Clone` trait implementation.
+  // Then this struct is `cloneable`.
+  #[derive(Debug, Clone)]
+  struct Person {
+      name: String,
+      age: u8,
+  }
+
+  // Here you ask for return type is `Vec<Person>`
+  let matched_persons: Vec<Person> = person_list
+      .iter()
+      .filter(|temp_person| {
+          temp_person.name.find("Ye").is_some()
+      })
+      // Then you need to clone all the matched `Person` instances
+      .cloned()
+      // After you `collect`, the return type will be `Vec<Person>`, as
+      // all elements inside there are be cloned.
+      .collect();
+#+END_SRC
+

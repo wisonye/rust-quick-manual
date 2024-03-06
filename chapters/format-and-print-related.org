@@ -1,0 +1,122 @@
+* Format and print related
+
+[[https://doc.rust-lang.org/std/fmt/index.html][Here]] is the =std::fmt= doc.
+
+| Format Parameters | Description                                         |
+|-------------------+-----------------------------------------------------|
+| ={}=                | Format by =std::fmt::Display= Trait                   |
+| ={:?}=              | Format by =std::fmt::Debug= Trait                     |
+| ={:#?}=             | Format by =std::fmt::Debug= Trait with pretty effects |
+| ={:p}=              | Format pointer                                      |
+| ={:N}=              | Format with =N= width (filled with spaces)            |
+| ={:0N}=             | Format with =N= width (filled with =0=)                 |
+| ={:#X}=             | Format as HEX with =0x= prefix (with =0= padding)       |
+| ={:#b}=             | Format as binary with =0b= prefix (with =0= padding)    |
+| ={:.N}=             | Format with =N= digits after decimal point            |
+| ={{=                | Escape ={=                                            |
+| =}}=                | Escape =}=                                            |
+
+
+Examples:
+
+#+BEGIN_SRC rust
+  let u8_value = 0x0Au8;
+
+  println!(">>> u8_value ptr: {:p}", &u8_value);
+  println!(">>> u8_value: {:?}", u8_value);
+  println!(">>> u8_value: {:#?}", u8_value);
+  println!(">>> u8_value: {:4}", u8_value);
+  println!(">>> u8_value: {:04}", u8_value);
+  println!(">>> u8_value: 0x{:04}", u8_value);
+  println!(">>> u8_value: {:#X}", u8_value);
+  println!(">>> u8_value: {:#b}", u8_value);
+  // >>> u8_value ptr: 0xb7d1c2343a7
+  // >>> u8_value: 10
+  // >>> u8_value: 10
+  // >>> u8_value:   10
+  // >>> u8_value: 0010
+  // >>> u8_value: 0x0010
+  // >>> u8_value: 0xA
+  // >>> u8_value: 0b1010
+
+  //
+  // Aligment
+  //
+  println!("");
+  println!("[ Aligment - filled with spaces ]");
+  println!(">>> u8_value: {:<6}", u8_value);
+  println!(">>> u8_value: {:^6}", u8_value);
+  println!(">>> u8_value: {:>6}", u8_value);
+  println!("");
+  println!("[ Aligment - filled with '-' ]");
+  println!(">>> u8_value: {:-<6}", u8_value);
+  println!(">>> u8_value: {:-^6}", u8_value);
+  println!(">>> u8_value: {:->6}", u8_value);
+  println!("");
+  println!("[ Aligment - filled with '0' ]");
+  println!(">>> u8_value: {:0<6}", u8_value);
+  println!(">>> u8_value: {:0^6}", u8_value);
+  println!(">>> u8_value: {:0>6}", u8_value);
+  println!("");
+  // [ Aligment - filled with spaces ]
+  // >>> u8_value: 10    
+  // >>> u8_value:   10  
+  // >>> u8_value:     10
+
+  // [ Aligment - filled with '-' ]
+  // >>> u8_value: 10----
+  // >>> u8_value: --10--
+  // >>> u8_value: ----10
+
+  // [ Aligment - filled with '0' ]
+  // >>> u8_value: 100000
+  // >>> u8_value: 001000
+  // >>> u8_value: 000010
+
+  //
+  // Float precision
+  //
+  let float_value = 12.3456;
+  println!(">>> float_value: {}", float_value);
+  println!(">>> float_value: {:.2}", float_value);
+  println!(">>> float_value: {:.3}", float_value);
+  // >>> float_value: 12.3456
+  // >>> float_value: 12.35
+  // >>> float_value: 12.346
+
+  println!(">>> Here is how to escape '{{' and '}}'");
+  // >>> Here is how to escape '{' and '}'
+#+END_SRC
+
+
+** Handy format syntax
+
+You can put variable name into the format string directly, so following =println!= output the same result:
+
+#+BEGIN_SRC rust
+  let u8_value = 0x0Au8;
+
+  // Normal syntax with place holder and var name as parameter
+  println!(">>> u8_value: {:?}", u8_value);
+
+  // Handy syntax
+  println!(">>> u8_value: {u8_value:?}");
+#+END_SRC
+
+But if you want to print =&u8_value= or call any method via =u8_value.xxx=, then you only can use =Norma syntax=!!!
+
+
+** Format fixed with HEX
+
+#+BEGIN_SRC rust
+  let u8_v = 0x0Au8;
+  let u16_v = 0x0Bu16;
+  println!("u8_v: 0x{u8_v:02X?}, size: {}", core::mem::size_of::<u8>());
+  println!(
+      "u16_v: 0x{u16_v:04X?}, size: {}",
+      core::mem::size_of::<u16>()
+  );
+
+  // u8_v: 0x0A, size: 1
+  // u16_v: 0x000B, size: 2
+#+END_SRC

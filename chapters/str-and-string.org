@@ -1,0 +1,97 @@
+* =&str= and =String=
+
+** What's the difference?
+
+- =str= is also called a =string slice=, is the most primitive string type.
+
+- =&str= is =string slice= borroyoud form.
+
+- =&'static str= is also the type of string literals.
+
+- =String= is a growable, mutable, owned type in =std::string::String=.
+
+    Actually, it just a =Vec= of =u8/char=:
+
+    #+BEGIN_SRC rust
+      pub struct String {
+          vec: Vec<u8>,
+      }
+    #+END_SRC
+
+    All String slices are always valid =UTF-8=.
+
+    
+** How to convert =String= to =&str=?
+
+#+BEGIN_SRC rust
+  let test_string = String::from("hello");
+
+  // `String` to `&str`
+  let test_str   = test_string.as_str();
+
+  // `String` to `&str` by creating a full slice
+  let test_str_1 = &test_string[..];
+
+  // `&str` to `String`
+  let test_string_2 = test_str.to_string();
+#+END_SRC
+
+
+=Tips=: Any primitive data type already implements the  =ToString= trait:
+
+#+BEGIN_SRC rust
+  pub trait ToString {
+      fn to_string(&self) -> String;
+  }
+#+END_SRC
+
+
+** How to update =String=?
+
+#+BEGIN_SRC rust
+  let mut test_string = String::from("hello");
+
+  // `push`, only accept `char`
+  test_string.push(' ');
+
+  // `push_str` accept `&str`
+  test_string.push_str("world");
+
+  // `+` operator actually call the `add(self, &str)` method
+  let mut new_string = test_string + " !";
+
+  // `+` accept the `&str`, if you want to `+` `String`,
+  // u need to use reference. When you write `&name_string`
+  // below, that's a `&String` type, not `&str`. But compiler
+  // will do `&name_string[..]` for us to get back the `&str`!
+  let name_string = String::from("Wison");
+  new_string = new_string + &name_string;
+
+  // Or you can use the `format!` macro to get back any combined `String`
+  let greeting_string = format!("{} {} {}", "你好嗎？", name_string, ", How r u ?");
+#+END_SRC
+
+
+** How to create a customized =String= in a handy way like =ES6= syntax (='${x}...{$y}')=?
+
+#+BEGIN_SRC rust
+  // That's what `format!` macro does
+  format!("buffer: {}", hex_to_string(&buffer, None));
+
+  // Or you want the `&str` back rather than `String`
+  format!("buffer: {}", hex_to_string(&buffer, None)).as_str();
+#+END_SRC
+
+** =String= to =vec= and back
+
+#+BEGIN_SRC rust
+  let alarm = "test alarm, fire alarm, open alarm".to_string();
+
+  // to vec
+  let fixed_alarm = alarm.split(',').collect::<Vec<&str>>();
+
+  // back to String
+  let new_alarm = fixed_alarm.join(",");
+#+END_SRC
+
+

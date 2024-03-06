@@ -1,0 +1,51 @@
+* Working with bytes
+
+** Integer from =bytes= (=&[u8]=)
+
+Any primitive integer has =from_xx_bytes=, =xx= means =be= (big endian) or =le= (less endian).
+
+#+BEGIN_SRC rust
+  let int_be_32 = u32::from_be_bytes([0x12, 0x34, 0x56, 0x78]);
+  let int_le_32 = u32::from_le_bytes([0x12, 0x34, 0x56, 0x78]);
+  println!("int_be_32: {:#X}", int_be_32);
+  println!("int_le_32: {:#X}", int_le_32);
+#+END_SRC
+
+Output:
+
+#+BEGIN_SRC bash
+  int_be_32: 0x12345678
+  int_le_32: 0x78563412
+#+END_SRC
+
+
+** Integer to =bytes=
+
+Any primitive integer has =to_xx_bytes=, =xx= means =be= (big endian) or =le= (less endian).
+
+#+BEGIN_SRC rust
+  // Return type is `[u8; 4]`
+  let bytes_32 = 0x12345678u32.to_be_bytes();
+
+  // Return type is `[u8; 2]`
+  let bytes_16 = 0x1234u16.to_le_bytes();
+#+END_SRC
+
+
+** =String= and =str= to =bytes=
+
+#+BEGIN_SRC rust
+  // Return type is `&[u8]`
+  let bytes = "bors".as_bytes();
+  let bytes_2 = String::from("hello").as_str().as_bytes();
+#+END_SRC
+
+
+** =bytes= to =String=
+
+#+BEGIN_SRC rust
+  let bytes = [0x30, 0x31, 0x32, 0x33];
+  String::from_utf8(bytes.to_vec()).unwrap();
+#+END_SRC
+
+

@@ -1,0 +1,35 @@
+* Ownership and borrowing
+
+A simple but not very accurate summarise:
+
+=Ownership= and =lifetime= is all about =Who can hold what at when=
+
+*** Any variable assignment will cause =ownership= move, for example:
+
+#+BEGIN_SRC rust
+  let test_string = String::from("hello");
+
+  // After finish this assignment, ownership of `test_string` will be moved into `new_string`!
+  let mut new_string = test_string + " !";
+#+END_SRC
+
+
+*** From =Reference= to be owned
+
+#+BEGIN_SRC rust
+  // `&str` (reference to a `String Slice`) back to be owned `String` instance.
+  let s: &str = "a";
+  let ss: String = s.to_owned();
+
+  // `&[u8]` (reference to [u8]) back to be owned `Vec<u8>` instance.
+  let v: &[u8] = &[1, 2];
+  let vv: Vec<u8> = v.to_owned();
+#+END_SRC
+
+
+*** For the =function parameter=, usually just pass by reference as you don't want to take the =ownership=.
+
+
+*** For =function return value=
+
+If you need to return something created inside the function, then you HAVE TO return the =ownership= rather than the =reference= by copying return value. As after function end, =function stack= will be dropped, all memory of variables inside there will be freed, not make sense if you return a reference to a dropped variable (except returning global vars reference or string literals)!!!
