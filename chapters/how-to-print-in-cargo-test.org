@@ -1,0 +1,17 @@
+* How to =println!= in =cargo test=
+
+By default, the following =println!()= won't print to stdout:
+
+#+BEGIN_SRC rust
+  #[test]
+  fn test() {
+      println!("Hidden output")
+  }
+#+END_SRC
+
+
+But you can use pass =--nocapture= option to =cargo= to make that happen:
+
+#+BEGIN_SRC bash
+  cargo test -- --nocapture
+#+END_SRC

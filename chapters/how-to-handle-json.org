@@ -1,0 +1,347 @@
+* How to handle JSON
+
+** Add necessary dependencies:
+
+#+BEGIN_SRC bash
+  cargo add serde --features derive
+  cargo add serde-json
+#+END_SRC
+
+
+** Add ~Serialize, Deserialize~ trait implementation
+
+#+BEGIN_SRC rust
+  #[derive(Serialize, Deserialize)]
+  struct Config {
+      listen_host: String,
+      listen_port: usize,
+      enable_logging: bool,
+  }
+
+  impl std::fmt::Debug for Config {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+          f.debug_struct("Config")
+              .field("listen_port", &self.listen_port)
+              .field("listen_host", &self.listen_host)
+              .field("enable_logging", &self.enable_logging)
+              .finish()
+      }
+  }
+#+END_SRC
+
+
+** Optional, provide the handy way to parse from and stringify
+
+#+BEGIN_SRC rust
+   impl Config {
+      ///
+      /// Stringify, return empty string if fail
+      ///
+      fn to_json_string(&self, pretty: bool) -> String {
+          let mut stringify_successfully = true;
+          let temp_result = if pretty {
+              serde_json::to_string_pretty(self)
+          } else {
+              serde_json::to_string(self)
+          };
+          let json_str = match temp_result {
+              Ok(str) => str,
+              Err(_) => {
+                  stringify_successfully = false;
+                  "".to_string()
+              }
+          };
+          println!(
+              ">>> [ Config -> to_json_string ] - parse sucessfully: {}, json_str: {}",
+              stringify_successfully, json_str
+          );
+
+          json_str
+      }
+
+      ///
+      /// Parse from JSON, use default value if fail to parse
+      ///
+      fn from_json(json_str: &str) -> Self {
+          let result = serde_json::from_str(json_str);
+          let parse_successfully = result.is_ok();
+          let config = result.unwrap_or(Config {
+              listen_host: "0.0.0.0".to_string(),
+              listen_port: 8080,
+              enable_logging: false,
+          });
+
+          println!(
+              ">>> [ Config -> from_json ] - parse sucessfully: {}, {:#?}",
+              parse_successfully, config
+          );
+
+          config
+      }
+  }
+#+END_SRC
+
+
+** Write the test code
+
+#+BEGIN_SRC rust
+  fn main() {
+      // Create test json
+      let json_str = json!({ "listen_port": 8888, "listen_host": "8.8.8.8", "enable_logging": true});
+
+      // From json string
+      let config = Config::from_json(json_str.to_string().as_str());
+
+      // Stringify to json string
+      config.to_json_string(false);
+      config.to_json_string(true);
+  }
+#+END_SRC
+
+
+** Let's test it
+
+#+BEGIN_SRC bash
+  cargo run
+
+  # >>> [ Config -> from_json ] - parse sucessfully: true, Config {
+  #     listen_port: 8888,
+  #     listen_host: "8.8.8.8",
+  #     enable_logging: true,
+  # }
+  # >>> [ Config -> to_json_string ] - parse sucessfully: true, json_str: {"listen_host":"8.8.8.8","listen_port":8888,"enable_logging":true}
+  # >>> [ Config -> to_json_string ] - parse sucessfully: true, json_str: {
+  #   "listen_host": "8.8.8.8",
+  #   "listen_port": 8888,
+  #   "enable_logging": true
+  # }
+#+END_SRC
+
+
+** Custom field handling
+
+What if the json field name is different with your struct field name, then you can use the ~#[serde(rename())]~ attributes to make that happen:
+
+#+BEGIN_SRC rust
+  #[derive(Serialize, Deserialize)]
+  struct Config {
+      // Only apply when struct --> json string
+      #[serde(rename(serialize = "ListenHost"))]
+      listen_host: String,
+
+      // Only apply when json string --> struct
+      #[serde(rename(deserialize = "ListenPort"))]
+      listen_port: usize,
+
+      // Apply anyway in both direction
+      #[serde(rename(serialize = "logging", deserialize = "logging"))]
+      enable_logging: bool,
+  }
+#+END_SRC
+
+
+Another useful attributes:
+
+~#[serde(default)]~: if the value is not present when deserializing, use the Default::default().
+
+~#[serde(skip)]~: Skip this field: do not serialize or deserialize it.
+
+~#[serde(skip_serializing)]~: Skip this field when serializing, but not when deserializing.
+
+~#[serde(skip_deserializing)]~: Skip this field when deserializing, but not when serializing.
+
+~#[serde(rename_all = "camelCase")]~: Affect all fields in the struct, Example:
+
+#+BEGIN_SRC rust
+  use serde::Serialize;
+
+  #[derive(Serialize)]
+  #[serde(rename_all = "camelCase")]
+  struct Person {
+      first_name: String,
+      last_name: String,
+  }
+
+  fn main() {
+      let person = Person {
+          first_name: "Graydon".to_string(),
+          last_name: "Hoare".to_string(),
+      };
+
+      let json = serde_json::to_string_pretty(&person).unwrap();
+
+      // Prints:
+      //
+      //    {
+      //      "firstName": "Graydon",
+      //      "lastName": "Hoare"
+      //    }
+      println!("{}", json);
+  } 
+#+END_SRC
+
+You're to find all supported attributes from [[https://serde.rs/field-attrs.html][here]]
+
+
+** Put all together: read json from file
+
+*** Version 1
+
+#+BEGIN_SRC rust
+  use serde::{Serialize, Deserialize};
+
+  #[derive(Debug, Serialize, Deserialize)]
+  struct Geo {
+      lat: String,
+      lng: String,
+  }
+
+  #[derive(Debug, Serialize, Deserialize)]
+  struct Address {
+      street: String,
+      suite: String,
+      city: String,
+      zipcode: String,
+      geo: Geo,
+  }
+
+  #[derive(Debug, Serialize, Deserialize)]
+  struct Company {
+      name: String,
+      #[serde(rename(deserialize = "catchPhrase"))]
+      catch_phrase: String,
+      bs: String,
+  }
+
+  #[derive(Debug, Serialize, Deserialize)]
+  struct User {
+      id: usize,
+      name: String,
+      username: String,
+      email: String,
+      address: Address,
+      phone: String,
+      website: String,
+      company: Company,
+      hobbies: Vec<String>,
+  }
+
+  ///
+  ///
+  ///
+  fn read_user_from_file(filename: &str) -> Option<Vec<User>> {
+      let read_result = std::fs::read(filename);
+      if read_result.is_err() {
+          println!(
+              ">>> [ read_user_from_file ] - error: {}",
+              read_result.err().unwrap().to_string()
+          );
+
+          return None;
+      }
+
+      let bytes = read_result.unwrap();
+      if bytes.len() <= 0 {
+          return None;
+      }
+
+      let json_str = String::from_utf8(bytes).unwrap();
+
+      // println!(">>> [ read_user_from_file ] - json_str: {json_str}");
+
+      let result = serde_json::from_str(json_str.as_str());
+      match result {
+          Ok(user) => {
+              println!(">>> [ read_user_from_file ] - user: {user:#?}");
+              user
+          },
+          Err(e) => {
+              println!(">>> [ read_user_from_file ] - error: {}", e.to_string());
+              None
+          }
+      }
+  }
+
+  ///
+  ///
+  ///
+  fn main() {
+      println!("Hello, world!");
+
+      let user_list = read_user_from_file("/home/wison/temp/test.txt");
+
+      let user_list_data = user_list.unwrap();
+
+      //
+      // Map user to `user.name`
+      //
+      let name_list = user_list_data.iter().map(|u| u.name.as_str() ).collect::<Vec<&str>>();
+      println!(">>> name_list len: {}, data: {name_list:#?}", name_list.len());
+
+
+      //
+      // Filter user by `user.company.name`
+      //
+      let user_belongs_to_company = user_list_data.iter().filter(|u| u.company.name ==  "Romaguera-Crona").collect::<Vec<&User>>();
+      println!(">>> user_belongs_to_company len: {}, data: {user_belongs_to_company:#?}", user_belongs_to_company.len());
+  }
+#+END_SRC
+
+
+*** Version 2: Propagate erros
+
+#+BEGIN_SRC rust
+  ///
+  ///
+  ///
+  fn read_user_from_file(filename: &str) -> Result<Vec<User>, Box<dyn std::error::Error>> {
+      let bytes = std::fs::read(filename)?;
+      let json_str = String::from_utf8(bytes).unwrap();
+      let user_list: Vec<User> = serde_json::from_str(json_str.as_str())?;
+      Ok(user_list)
+  }
+
+  ///
+  ///
+  ///
+  fn main() {
+      let filename = "/home/wison/temp/test.txt";
+      let user_list = match read_user_from_file(filename) {
+          Ok(users) => {
+              println!(">>> [ main ] - user_list: {users:#?}");
+              users
+          }
+          Err(e) => {
+              println!(
+                  ">>> [ main ] - error happened when loading json from file ({}): {e:?}",
+                  filename,
+              );
+              return;
+          }
+      };
+
+      let user_list_data = user_list;
+
+      let name_list = user_list_data
+          .iter()
+          .map(|u| u.name.as_str())
+          .collect::<Vec<&str>>();
+
+      println!(
+          ">>> name_list len: {}, data: {name_list:#?}",
+          name_list.len()
+      );
+
+      let user_belongs_to_company = user_list_data
+          .iter()
+          .filter(|u| u.company.name == "Romaguera-Crona")
+          .collect::<Vec<&User>>();
+      println!(
+          ">>> user_belongs_to_company len: {}, data: {user_belongs_to_company:#?}",
+          user_belongs_to_company.len()
+      );
+  }
+#+END_SRC
+
+
+

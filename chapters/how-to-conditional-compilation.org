@@ -1,0 +1,218 @@
+* How to conditional compilation
+
+** Based on OS
+
+You can apply ~#[cfg(target_os = "xxxx")]~ to =Struct/function/crate/match/if/code block/etc..= to do conditional compilation, all supported =target_os= is [[https://doc.rust-lang.org/reference/conditional-compilation.html#target_os][here]].
+
+#+BEGIN_SRC bash
+  #[cfg(target_os = "macos")]
+  fn macos_only() {}
+
+  #[cfg(target_os = "ios")]
+  fn ios_only() {}
+
+  #[cfg(target_os = "linux")]
+  fn linux_only() {}
+
+  #[cfg(target_os = "windows")]
+  fn windows_only() {}
+
+  #[cfg(target_os = "android")]
+  fn android_only() {}
+
+  #[cfg(target_os = "dragonfly")]
+  fn dragonfly_only() {}
+
+  #[cfg(target_os = "freebsd")]
+  fn freebsd_only() {}
+
+  #[cfg(target_os = "openbsd")]
+  fn openbsd_only() {}
+
+  #[cfg(target_os = "netbsd")]
+  fn netbsd_only() {}
+
+  ///
+  ///
+  ///
+  fn do_things_based_on_os() {
+      #[cfg(target_os = "freebsd")]
+      {
+          println!(">>> Do things only on FreeBSD");
+      }
+
+      #[cfg(target_os = "openbsd")]
+      {
+          println!(">>> Do things only on OpenBSD");
+      }
+  }
+#+END_SRC
+
+
+** Based on custom configured attributes
+
+> You can use the following atrributes to check whether configured attributes exist or are set to the given values:
+
+  - ~#[cfg(XXXX)]~ 
+  - ~#[cfg(YYYY=true)]~ 
+  - ~#[cfg(YYYY="value")~
+
+
+> Then pass configured attributes to =rustc= like this:
+
+  ~RUSTFLAGS='--cfg XXXX --cfg YYYY="enabled"' cargo run~
+
+
+
+In the following example, it uses =ENABLE_BROWSER_HISTORY= configured attribute to control whether compile =BrowserHistory= related code or not:
+
+#+BEGIN_SRC rust
+  ///
+  ///
+  ///
+  #[cfg(ENABLE_BROWSER_HISTORY)]
+  struct BrowserHistory {
+      stack: Vec<String>,
+  }
+
+  ///
+  ///
+  ///
+  #[cfg(ENABLE_BROWSER_HISTORY)]
+  impl BrowserHistory {
+      ///
+      ///
+      ///
+      fn new(capacity: Option<usize>, first_url: Option<&str>) -> Self {
+          let mut bh = BrowserHistory {
+              stack: match capacity {
+                  Some(c) => Vec::with_capacity(c),
+                  None => Vec::new(),
+              },
+          };
+
+          if let Some(url) = first_url {
+              bh.stack.push(String::from(url));
+          }
+
+          bh
+      }
+
+      ///
+      ///
+      ///
+      pub fn push(&mut self, url: &str) {
+          self.stack.push(String::from(url))
+      }
+
+      ///
+      ///
+      ///
+      pub fn pop(&mut self) -> Option<String> {
+          self.stack.pop()
+      }
+
+      ///
+      ///
+      ///
+      pub fn get_history_count(&self) -> usize {
+          self.stack.len()
+      }
+
+      ///
+      ///
+      ///
+      pub fn get_capacity(&self) -> usize {
+          self.stack.capacity()
+      }
+  }
+
+  #[cfg(test)]
+  #[cfg(ENABLE_BROWSER_HISTORY)]
+  mod tests {
+      // Note this useful idiom: importing names from outer (for mod tests) scope.
+      use super::*;
+
+      #[test]
+      fn create_browser_history_should_work() {
+          let bh = BrowserHistory::new(None, None);
+          assert_eq!(bh.get_history_count(), 0);
+          assert_eq!(bh.get_capacity(), 0);
+
+          let bh2 = BrowserHistory::new(Some(10), None);
+          assert_eq!(bh2.get_history_count(), 0);
+          assert_eq!(bh2.get_capacity(), 10);
+      }
+
+      #[test]
+      fn push_and_pop_should_work() {
+          let mut bh = BrowserHistory::new(None, None);
+          bh.push("http://abc.com");
+          bh.push("http://111.com");
+          bh.push("http://222.com");
+          assert_eq!(bh.get_history_count(), 3);
+          assert_eq!(bh.get_capacity(), 4);
+
+          let p1 = bh.pop();
+          assert_eq!(p1.is_some(), true);
+          assert_eq!(p1.unwrap().as_str(), "http://222.com");
+          assert_eq!(bh.get_history_count(), 2);
+
+          let p2 = bh.pop();
+          assert_eq!(p2.is_some(), true);
+          assert_eq!(p2.unwrap(), "http://111.com");
+          assert_eq!(bh.get_history_count(), 1);
+
+          let p3 = bh.pop();
+          assert_eq!(p3.is_some(), true);
+          assert_eq!(p3.unwrap(), "http://abc.com");
+          assert_eq!(bh.get_history_count(), 0);
+
+          let p4 = bh.pop();
+          assert_eq!(p4.is_none(), true);
+          assert_eq!(bh.get_history_count(), 0);
+
+          //
+          // Only prints when `--cfg YYYY="enabled"` is passed to `rustc`!!!
+          //
+          #[cfg(YYYY="enabled")]
+          println!(">>> YYYY is enabled");
+      }
+  }
+#+END_SRC
+
+
+So, if you run ~cargo test~, then no tests will be run!!!
+
+#+BEGIN_SRC bash
+  running 0 tests
+
+  test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+#+END_SRC
+
+
+But if you pass the =ENABLE_BROWSER_HISTORY= configured attribute to =rustc=, all codes affect by ~#[cfg(ENABLE_BROWSER_HISTORY)]~ will be compiled (and run):
+
+#+BEGIN_SRC bash
+  RUSTFLAGS='--cfg ENABLE_BROWSER_HISTORY --cfg YYYY="enabled"' cargo test -- --nocapture
+
+     Compiling proc-macro2 v1.0.78
+     Compiling unicode-ident v1.0.12
+     Compiling serde v1.0.197
+     Compiling serde_json v1.0.114
+     Compiling itoa v1.0.10
+     Compiling ryu v1.0.17
+     Compiling quote v1.0.35
+     Compiling syn v2.0.52
+     Compiling serde_derive v1.0.197
+     Compiling temp v0.1.0 (/home/wison/rust/temp)
+      Finished test [unoptimized + debuginfo] target(s) in 5.42s
+       Running unittests src/main.rs (target/debug/deps/temp-a146d7d6e761521a)
+
+  running 2 tests
+  >>> YYYY is enabled
+  test tests::create_browser_history_should_work ... ok
+  test tests::push_and_pop_should_work ... ok
+
+  test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+#+END_SRC

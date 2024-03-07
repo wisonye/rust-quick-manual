@@ -1,0 +1,31 @@
+* How to get type and byte size
+
+Type name of type: ~std::any::type_name::<T>()~
+Type name of value: ~std::any::type_name_of_val(&me)~
+
+Byte size of value: ~core::mem::size_of_val(&T)~
+Byte size of type:  ~core::mem::size_of::<T>()~
+
+#+BEGIN_SRC rust
+  //
+  // Type name of type or value
+  //
+  println!(">>> Type name of 'Person': {}", std::any::type_name::<Person>());
+  println!(">>> Type name of 'me': {}", std::any::type_name_of_val(&me));
+
+  //
+  // Size of value
+  //
+  println!(">>> temp_arr size: {}", core::mem::size_of_val(&temp_arr));
+  println!(">>> arr_slice size: {}", core::mem::size_of_val(arr_slice));
+  println!(">>> me size: {}", core::mem::size_of_val(&me));
+  println!(">>> person_list size: {}", core::mem::size_of_val(&person_list));
+  println!(">>> person_list_ages size: {}", core::mem::size_of_val(&person_list_ages));
+
+  //
+  // Size of type
+  //
+  println!(">>> Person size: {}", core::mem::size_of::<Person>());
+  println!(">>> Array [i32;5] size: {}", core::mem::size_of::<[i32;5]>());
+  println!(">>> Slice &[i32] size: {}", core::mem::size_of::<&[i32]>());
+#+END_SRC

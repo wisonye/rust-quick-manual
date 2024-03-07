@@ -1,0 +1,105 @@
+* How to read process arguments
+
+Get argument list: ~std::env::args()~
+
+#+BEGIN_SRC rust
+  ///
+  ///
+  ///
+  struct Config {
+      listen_host: String,
+      listen_port: usize,
+      enable_logging: bool,
+  }
+
+  impl std::fmt::Debug for Config {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+          f.debug_struct("Config")
+              .field("listen_port", &self.listen_port)
+              .field("listen_host", &self.listen_host)
+              .field("enable_logging", &self.enable_logging)
+              .finish()
+      }
+  }
+
+  ///
+  ///
+  ///
+  fn get_args() -> Config {
+      let args = std::env::args().collect::<Vec<String>>();
+      println!(">>> [ get_args ] - args count: {}", args.len());
+
+      let config = if args.len() > 1 {
+          let mut host = "0.0.0.0".to_string();
+          let mut port = 8080;
+          let mut enable_logging = false;
+
+          for (index, temp_arg) in args.iter().enumerate() {
+              println!(">>> [ get_args ] - arg {}: {:#?}", index, temp_arg);
+
+              let temp_str = temp_arg.to_lowercase();
+              let temp_arr = temp_str.split("=").collect::<Vec<&str>>();
+              if temp_arr.len() == 2 {
+                  match temp_arr[0].trim() {
+                      "--port" => {
+                          let temp_port = usize::from_str(temp_arr[1]);
+                          if temp_port.is_ok() {
+                              port = temp_port.unwrap();
+                          }
+                      }
+                      "--host" => {
+                          let temp_host = temp_arr[1].trim();
+                          if temp_host != "" {
+                              host = temp_host.to_string();
+                          }
+                      }
+                      _ => {}
+                  }
+              } else if temp_str.trim() == "--enable-logging" {
+                  enable_logging = true;
+              }
+          }
+
+          Config {
+              listen_port: port,
+              listen_host: host,
+              enable_logging,
+          }
+      } else {
+          Config {
+              listen_port: 8888,
+              listen_host: "0.0.0.0".to_string(),
+              enable_logging: false,
+          }
+      };
+
+      println!(">>> [ get_args ] - {:#?}", config);
+
+      config
+  }
+
+  ///
+  ///
+  ///
+  fn main() {
+    get_args();
+  }
+#+END_SRC
+
+
+So, let's run it:
+
+#+BEGIN_SRC bash
+  cargo run -- --port=7777 --host=127.0.0.1 --enable-logging
+
+  # >>> [ get_args ] - args count: 4
+  # >>> [ get_args ] - arg 0: "target/debug/temp"
+  # >>> [ get_args ] - arg 1: "--port=7777"
+  # >>> [ get_args ] - arg 2: "--host=127.0.0.1"
+  # >>> [ get_args ] - arg 3: "--enable-logging"
+  # >>> [ get_args ] - Config {
+  #     listen_port: 7777,
+  #     listen_host: "127.0.0.1",
+  #     enable_logging: true,
+  # }
+#+END_SRC

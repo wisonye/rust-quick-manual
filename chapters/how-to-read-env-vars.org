@@ -1,0 +1,68 @@
+* How to read environment variables
+
+Get env var: ~std::env::var("key")~
+
+#+BEGIN_SRC rust
+  ///
+  ///
+  ///
+  struct Config {
+      listen_host: String,
+      listen_port: usize,
+      enable_logging: bool,
+  }
+
+  impl std::fmt::Debug for Config {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+          f.debug_struct("Config")
+              .field("listen_port", &self.listen_port)
+              .field("listen_host", &self.listen_host)
+              .field("enable_logging", &self.enable_logging)
+              .finish()
+      }
+  }
+
+  ///
+  /// Create `Config` from env vars
+  ///
+  fn get_env_vars() -> Config {
+      let config = Config {
+          listen_host: match std::env::var("HOST") {
+              Ok(host) => host,
+              Err(_) => "0.0.0.0".to_string(),
+          },
+          listen_port: match std::env::var("PORT") {
+              Ok(port) => usize::from_str(port.as_str()).unwrap_or(8080),
+              Err(_) => 8080,
+          },
+          enable_logging: match std::env::var("ENABLE_LOGGING") {
+              Ok(temp_str) => temp_str.to_lowercase() == "true",
+              Err(_) => false,
+          },
+      };
+
+      println!(">>> [ get_env_vars ] - {:#?}", config);
+
+      config
+  }
+
+  ///
+  ///
+  ///
+  fn main() {
+    get_env_vars();
+  }
+#+END_SRC
+
+
+So, let's run it:
+
+#+BEGIN_SRC bash
+  PORT=9999 HOST=127.0.0.1 ENABLE_LOGGING=TRUE cargo run 
+
+  # >>> [ get_env_vars ] - Config {
+  #     listen_port: 9999,
+  #     listen_host: "127.0.0.1",
+  #     enable_logging: true,
+  # }
+#+END_SRC

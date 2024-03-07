@@ -17,5 +17,13 @@
 ** How to
 *** [[file:chapters/how-to-pass-rustc-flags-via-cargo-build.org][How to pass rustc flags via cargo build]]
 *** [[file:chapters/how-to-build-static-link-binary.org][How to build static link binary]]
+*** [[file:chapters/how-to-get-type-and-byte-size.org][How to get type and byte size]]
+*** [[file:chapters/how-to-read-env-vars.org][How to read environment variables]]
+*** [[file:chapters/how-to-read-process-arguments.org][How to read process arguments]]
+*** [[file:chapters/how-to-execute-command.org][How to execute command]]
+*** [[file:chapters/how-to-read-write-files.org][How to read from and write to file]]
+*** [[file:chapters/how-to-handle-json.org][How to handle JSON]]
+*** [[file:chapters/how-to-print-in-cargo-test.org][How to =println!= in cargo test]]
+*** [[file:chapters/how-to-conditional-compilation.org][How to conditional compilation]]
 
 Rust build script
