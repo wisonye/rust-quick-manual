@@ -239,3 +239,80 @@ That's saying the =<T>= inside the =Box= doesn't need to be sized, as you have t
 
 For more details about =Memory Management=, plz watch this [[https://www.youtube.com/playlist?list=PLai5B987bZ9BnS7dBlTF9HRop55vYUL7r][video]]
 
+
+
+** Trait bound
+
+=trait bound= is the way to limit or control the =generic type= when you implement traits on =struct= or =enum=
+
+*** =trait bound= syntax
+
+Both examples below are saying the same thing: 
+
+The generic type =T= has to implement the =std::marker::Send= trait.
+
+#+BEGIN_SRC rust
+  pub fn run_task<T: Send>(task: T) {}
+
+  pub fn run_task<T>(task: impl Send) {}
+#+END_SRC
+
+
+*** Some traits you should know about:
+
+- =std::marker::Copy= - Can be assigned to another variable by copying bits. Doc is [[https://doc.rust-lang.org/beta/std/marker/trait.Copy.html][here]]
+
+- =std::clone::Clone= - Can call =.clone()= to duplicate itself. Doc is [[https://doc.rust-lang.org/beta/std/clone/trait.Clone.html][here]]
+
+- =std::marker::Send= - Can be passed as value between threads safely.
+
+    This trait is automatically implemented when the compiler determines it's appropriate. Doc is [[https://doc.rust-lang.org/beta/std/marker/trait.Send.html][here]]
+
+- =std::marker::Sync= - Can be passed as reference between threads safely.
+
+    This trait is automatically implemented when the compiler determines it's appropriate. Doc is [[https://doc.rust-lang.org/beta/std/marker/trait.Sync.html][here]]
+
+
+*** A real case.
+
+Assuming that you're building a =ThreadPool=, it has a =execute= method to run any closure in a new spawned thread. Then you should have a bunch of =trait bound= on the generic types like below:
+
+#+BEGIN_SRC rust
+  struct ThreadPool {
+      capacity: u16,
+  }
+
+  impl ThreadPool {
+      pub fn new(capacity: u16) -> Self {
+          Self { capacity }
+      }
+
+      pub fn execute<ExecutorClosure, ReturnType>(
+          &self,
+          f: ExecutorClosure,
+      ) -> std::thread::JoinHandle<ReturnType>
+      where
+          // This make sure the closure you want meet the below criteria:
+          // 1. A callable closure (only call once)
+          // 2. It's thread safely, as  the `Send` marker trait expresses
+          //    that it is safe to be passed from thread to thread. The
+          //    closure you accept will be passed from `outside thread` into
+          //    the new thread you spawned.
+          // 3. With a longest lifetime, as the closure will run outlive
+          //    of the main thread, and you don't know how long it is.
+          ExecutorClosure: FnOnce() -> ReturnType + Send + 'static,
+
+          // This make sure our closure return type is:
+          // 1. It's thread safely. As return value will be passed from the
+          //    new spawned thread back to `outlive thread`.
+          // 2. With a longest lifetime, as the closure will run outlive
+          //    of the main thread, and you don't know how long it is.
+          ReturnType: Send + 'static
+      {
+          std::thread::spawn(f)
+      }
+  }
+#+END_SRC
+
+
+
