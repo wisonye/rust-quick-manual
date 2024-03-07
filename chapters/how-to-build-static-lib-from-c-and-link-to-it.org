@@ -1,0 +1,255 @@
+* How to build static lib from C and link to it
+
+** Rust build script
+
+[[https://doc.rust-lang.org/cargo/reference/build-scripts.html][Here]] is the offical build script doc.
+
+*** How =Rust build script= works
+
+When you create a =build.rs= in the root project folder, =cargo= will compile it as a separated binary and run it BEFORE compiling another rust packages in your rust project (includes =main.rs=).
+
+
+*** Where to add the dependencies that are only needed for =build.rs=
+
+You can run =cargo add --build XXXX= to add the =XXXX= build dependencies to =Cargo.toml=.
+
+For example, if you run =cargo add --build cc=, then it adds the following settings into =Cargo.toml=:
+
+#+BEGIN_SRC toml
+  build-dependencies]
+  cc = "1.0.90"
+#+END_SRC
+
+
+*** Where to see the =println!()= in =build.rs=
+
+All =println!()= inside =build.rs= won't output to console, that means you won't see it at all. But it saves to the following file:
+
+=target/debug/build/<pkg>/output=
+
+So, you're able to view that output log by running:
+
+#+BEGIN_SRC bash
+  #
+  # `temp-4802521adfb4300a` is your project name + random number
+  #
+  bat target/debug/build/temp-4802521adfb4300a/output
+#+END_SRC
+
+
+*** How to compile C files
+
+After running =cargo add --build cc=, here is the example to compile your C source files into static library:
+
+#+BEGIN_SRC rust
+  //
+  // Use the `cc` crate to build a C file and statically link it.
+  //
+  let lib_name = "util";
+  cc::Build::new()
+      .file("src/c-lib/hello_util.c")
+      .compile(lib_name);
+
+  let lib_output_dir = env::var("OUT_DIR").unwrap();
+  println!(
+      ">>> [ Cargo build script ] - 'lib{}.a' has been saved to: {lib_output_dir}",
+      lib_name
+  );
+#+END_SRC
+
+
+The =compile= function will produce a static library call ="lib ++ "+output+" + .a"= to =OUT_DIR= directory.
+
+For the above example code, you should see the following in =target/debug/build/<pkg>/output=:
+
+#+BEGIN_SRC bash
+  >>> [ Cargo build script ] - 'libutil.a' has been saved to: /Users/wison/rust/temp/target/debug/build/temp-4802521adfb4300a/out
+#+END_SRC
+
+
+*** How to read runtime environment vars
+
+#+BEGIN_SRC rust
+    let target_os = match env::var("CARGO_CFG_TARGET_OS") {
+        Ok(os) => os,
+        Err(_) => "".to_string(),
+    };
+    println!(">>> [ Cargo build script ] - target_os: {target_os}");
+#+END_SRC
+
+Based on those =CARGO_CFG_XXXX= env var, you're able to do conditional compilation for different OS or CPU arch.
+
+[[https://doc.rust-lang.org/cargo/reference/environment-variables.html#environment-variables-cargo-sets-for-build-scripts][Here]] is the detail supported env var list that you can use in =buidl.rs=.
+
+
+*** How =build.rs= communicate with =Cargo=
+
+Build scripts communicate with =Cargo= by printing to stdout. =Cargo= will interpret each line that starts with =cargo:= as an instruction that will influence compilation of the package. All other lines are ignored.
+
+The following is a summary of the instructions that =Cargo= recognizes, with each one detailed below.
+
+~cargo:rerun-if-changed=PATH~ — Tells Cargo when to re-run the script.
+~cargo:rerun-if-env-changed=VAR~ — Tells Cargo when to re-run the script.
+~cargo:rustc-link-arg=FLAG~ — Passes custom flags to a linker for benchmarks, binaries, cdylib crates, examples, and tests.
+~cargo:rustc-link-arg-bin=BIN=FLAG~ — Passes custom flags to a linker for the binary BIN.
+~cargo:rustc-link-arg-bins=FLAG~ — Passes custom flags to a linker for binaries.
+~cargo:rustc-link-arg-tests=FLAG~ — Passes custom flags to a linker for tests.
+~cargo:rustc-link-arg-examples=FLAG~ — Passes custom flags to a linker for examples.
+~cargo:rustc-link-arg-benches=FLAG~ — Passes custom flags to a linker for benchmarks.
+~cargo:rustc-link-lib=LIB~ — Adds a library to link.
+~cargo:rustc-link-search=[KIND=]PATH~ — Adds to the library search path.
+~cargo:rustc-flags=FLAGS~ — Passes certain flags to the compiler.
+~cargo:rustc-cfg=KEY[="VALUE"]~ — Enables compile-time cfg settings.
+~cargo:rustc-env=VAR=VALUE~ — Sets an environment variable.
+~cargo:rustc-cdylib-link-arg=FLAG~ — Passes custom flags to a linker for cdylib crates.
+~cargo:warning=MESSAGE~ — Displays a warning on the terminal.
+~cargo:KEY=VALUE~ — Metadata, used by links scripts.
+
+
+** A real example
+
+*** Add =cc= build dependencies into =Cargo.toml=
+
+#+BEGIN_SRC bash
+  cargo add --build cc
+#+END_SRC
+
+
+*** Create the following c lib
+
+Save the following content into =src/c-lib/hello_util.c=:
+
+#+BEGIN_SRC c
+  #include <stdint.h>
+
+  typedef uint64_t u64;
+
+  //
+  //
+  //
+  u64 add(u64 a, u64 b) {
+          return a + b;
+  }
+
+  //
+  //
+  //
+  const char* get_greeting() {
+          return "Hellow from C lib :)";
+  }
+#+END_SRC
+
+
+*** Create =build.rs= to compile the c lib
+
+Save the following content into =buid.rs=:
+
+#+BEGIN_SRC rust
+  use std::env;
+
+  ///
+  ///
+  ///
+  fn main() {
+      //
+      // All print output will saved into `target/debug/build/<pkg>/output` file!!!
+      //
+      // For viewing output, for example:
+      //
+      // `bat target/debug/build/temp-4802521adfb4300a/output`
+      //
+      println!(">>> [ Cargo build script ] - Re-run.");
+
+      //
+      // Tell Cargo that if the given file changes, to rerun this build script.
+      //
+      println!("cargo:rerun-if-changed=src/c-lib/hello_util.c");
+
+      //
+      // Use the `cc` crate to build a C file and statically link it.
+      //
+      let lib_name = "util";
+      cc::Build::new()
+          .file("src/c-lib/hello_util.c")
+          .compile(lib_name);
+
+      //
+      // The `compile` above will produce a static library call `lib"+output+".a".`
+      // to `OUT_DIR` directory.
+      //
+      // You should see the following in `target/debug/build/<pkg>/output`:
+      //
+      //  >>> [ Cargo build script ] - 'libutil.a' has been saved to: /Users/wison/rust/temp/target/debug/build/temp-4802521adfb4300a/out
+      //
+      let lib_output_dir = env::var("OUT_DIR").unwrap();
+      println!(
+          ">>> [ Cargo build script ] - 'lib{}.a' has been saved to: {lib_output_dir}",
+          lib_name
+      );
+
+      let target_os = match env::var("CARGO_CFG_TARGET_OS") {
+          Ok(os) => os,
+          Err(_) => "".to_string(),
+      };
+      println!(">>> [ Cargo build script ] - target_os: {target_os}");
+  }
+#+END_SRC
+
+
+*** Add C bindings via extern c lib function signature
+
+#+BEGIN_SRC rust
+  use std::ffi::{c_char, CStr};
+
+  extern "C" {
+      fn add(a: u64, b: u64) -> u64;
+      fn get_greeting() -> *const c_char;
+  }
+#+END_SRC
+
+For more =FFI= details, plz have a look at this [[https://github.com/wisonye/rust-ffi-demo][tutorial]].
+
+
+*** Call the C function inside =unsafe= block
+
+#+BEGIN_SRC rust
+  fn main() {
+      unsafe {
+          let result = add(88, 22);
+          println!(">>> result: {result}");
+
+          //
+          // Convert `const char*` back to Rust owned String
+          //
+          let greeting = CStr::from_ptr(get_greeting())
+              .to_string_lossy()
+              .into_owned();
+          println!(">>> greeting: {greeting}");
+      }
+  }
+#+END_SRC
+
+
+Now, run it and see the result:
+
+#+BEGIN_SRC bash
+  cargo run
+
+  # >>> result: 110
+  # >>> greeting: Hellow from C lib :)
+#+END_SRC
+
+
+Example project folder structure:
+
+#+BEGIN_SRC bash
+  ├─ Cargo.lock
+  ├── Cargo.toml
+  ├── build.rs
+  ├── main
+  ├── src
+  │   ├── c-lib
+  │   │   └── hello_util.c
+  │   └── main.rs
+  └── target
+#+END_SRC

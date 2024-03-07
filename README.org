@@ -25,5 +25,4 @@
 *** [[file:chapters/how-to-handle-json.org][How to handle JSON]]
 *** [[file:chapters/how-to-print-in-cargo-test.org][How to =println!= in cargo test]]
 *** [[file:chapters/how-to-conditional-compilation.org][How to conditional compilation]]
-
-Rust build script
+*** [[file:chapters/how-to-build-static-lib-from-c-and-link-to-it.org][How to build static lib from C and link to it]]
