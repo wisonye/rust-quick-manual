@@ -1,0 +1,94 @@
+* Enum
+
+** Enum with explicit value
+
+#+BEGIN_SRC rust
+  enum Color {
+      Red = 0xff0000,
+      Green = 0x00ff00,
+      Blue = 0x0000ff,
+  }
+ 
+#+END_SRC
+
+
+** Enum with struct
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  enum TransactionStatus {
+      Created {
+          id: String,
+          date: String,
+      },
+      Queued,
+      Processing {
+          process_vm_id: String,
+          random_ticket: usize,
+      },
+      Done {
+          success: bool,
+      },
+  }
+
+  impl TransactionStatus {
+      fn new(id: &str) -> Self {
+          Self::Created {
+              id: id.to_owned(),
+              date: "YYYY-MM-DD HH:MM:SS".to_string(),
+          }
+      }
+  }
+
+  fn main() {
+      let mut status = TransactionStatus::new("123456");
+      println!(">>> status: {status:?}");
+
+      status = TransactionStatus::Queued;
+      println!(">>> status: {status:?}");
+
+      status = TransactionStatus::Processing {
+          process_vm_id: "vm_axvaq_1".to_string(),
+          random_ticket: 861238364,
+      };
+      println!(">>> status: {status:?}");
+
+      status = TransactionStatus::Done {
+          success: true,
+      };
+      println!(">>> status: {status:?}");
+  }
+#+END_SRC
+
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> status: Created { id: "123456", date: "YYYY-MM-DD HH:MM:SS" }
+  >>> status: Queued
+  >>> status: Processing { process_vm_id: "vm_axvaq_1", random_ticket: 861238364 }
+  >>> status: Done { success: true }
+#+END_SRC
+
+
+** Pattern matching with =enum= value
+
+#+BEGIN_SRC rust
+   match status {
+      TransactionStatus::Created { id, date } => {
+          println!(">>> status: Created with id: {id}, date: {date}");
+      }
+      TransactionStatus::Queued => {
+          println!(">>> status: Queued");
+      }
+      TransactionStatus::Processing {
+          process_vm_id,
+          random_ticket,
+      } => {
+          println!(">>> status: Processing with process_vm_id: {process_vm_id}, random_ticket: {random_ticket}");
+      }
+      TransactionStatus::Done { success } => {
+          println!(">>> status: Done with success: {success}");
+      }
+  }
+#+END_SRC

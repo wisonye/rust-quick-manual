@@ -8,7 +8,7 @@
 ** [[file:chapters/pattern-matching.org][Pattern matching]]
 ** [[file:chapters/working-with-bytes.org][Working with bytes]]
 ** [[file:chapters/working-with-trait.org][Working with trait]]
-** Enum
+** [[file:chapters/enum.org][Enum]]
 ** [[file:chapters/error-handling.org][Error handling]]
 
 Rust build script
