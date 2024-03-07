@@ -1,0 +1,86 @@
+* Pattern matching
+
+** Mapping value to different types
+
+Use =match= to assign different type of value to init variable like =map=:
+
+#+BEGIN_SRC rust
+  //
+  // `std::string::String::find` returns `Option<usize>`, but if what if you
+  // you want to map it as `bool` value.
+  //
+  let has_escape_char = match buffer_string.find("7D02") {
+      //
+      // The `_` you put here means drop the value, as you don't care it at all
+      //
+      Some(_) => true,
+      None => false,
+  };
+
+  //
+  // Format into one line
+  //
+  let has_escape_1 = match buffer_string.find("7D02") { Some(_) => true, None => false };
+
+  //
+  // In this case, also can write in other ways below as youll, same goal:
+  //
+  let has_escape_1 = buffer_string.find("7D02").is_some();
+  let has_escape_1 = buffer_string.find("7D02") != None;
+#+END_SRC
+
+
+** Less code compare with using =if, else if, else= block
+
+You're able to =match= many values at the same time:
+
+#+BEGIN_SRC rust
+  pub fn get_response_type_desc(resp_bytes: &[u8], lang: Option<&str>) -> String {
+      if let Some("zh_cn") = lang {
+          match (resp_bytes[0], resp_bytes[1]) {
+              (0x00, 0x01) => "设备通用应答".to_string(),
+              (0x01, 0x00) => "设备注册".to_string(),
+              (0x00, 0x03) => "设备注销".to_string(),
+              (0x00, 0x02) => "设备心跳".to_string(),
+              _ => "未知设备响应".to_string(),
+          }
+      } else {
+          match (resp_bytes[0], resp_bytes[1]) {
+              (0x00, 0x01) => "General Command Response".to_string(),
+              (0x00, 0x02) => "Device Heartbeat".to_string(),
+              (0x01, 0x00) => "Device Login".to_string(),
+              (0x00, 0x03) => "Device Logout".to_string(),
+              _ => "Unknown Device Response".to_string(),
+          }
+      }
+  }
+
+  // pub fn get_response_type_desc(resp_bytes: &[u8], lang: Option<&str>) -> String {
+  //     if let Some("zh_cn") = lang {
+  //         if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x01 { "设备通用应答".to_string() }
+  //         else if resp_bytes[0] == 0x01 && resp_bytes[1] == 0x00 { "设备注册".to_string() }
+  //         else if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x03 { "设备注销".to_string() }
+  //         else if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x02 { "设备心跳".to_string() }
+  //         else { "未知设备响应".to_string() }
+  //     } else {
+  //         if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x01 { "General Command Response".to_string() }
+  //         else if resp_bytes[0] == 0x01 && resp_bytes[1] == 0x00 { "Device Login".to_string() }
+  //         else if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x03 { "Device Logout".to_string() }
+  //         else if resp_bytes[0] == 0x00 && resp_bytes[1] == 0x02 { "Device Heartbeat".to_string() }
+  //         else { "Unknown Device Response".to_string() }        
+  //     }
+  // }
+#+END_SRC
+
+
+** =if let= is the syntax sugar for a =match=
+
+#+BEGIN_SRC rust
+  pub fn get_response_type_desc(resp_bytes: &[u8], lang: Option<&str>) -> String {
+      // If option `lang` holds a "zh_cn" value
+      if let Some("zh_cn") = lang { }
+  }
+#+END_SRC
+
+
+

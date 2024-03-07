@@ -1,0 +1,241 @@
+* Working with =Trait=
+
+A =trait= is like an interface in another programming language, any type can implement one or more traits.
+
+For example, the following code defines multiple game traits for building a game engine:
+
+#+BEGIN_SRC rust
+  ///
+  /// Create and init the game
+  ///
+  pub trait InitGame {
+      fn init_game() -> Self;
+  }
+
+  ///
+  /// Run the game loop
+  ///
+  pub trait RunGame {
+      fn run(&mut self) -> &mut Self;
+  }
+
+  ///
+  /// Exit game and release extra resources
+  ///
+  pub trait ExitGame {
+      fn exit(&mut self) -> &mut Self;
+  }
+
+  ///
+  /// Update game logic on every tick
+  ///
+  pub trait GameLogic {
+      fn update_tick(&mut self);
+  }
+
+  ///
+  /// Draw the entire game
+  ///
+  pub trait DrawGame {
+      fn draw_game(&mut self);
+  }
+#+END_SRC
+
+
+** Generic and trait bounds
+
+Trait bounds are used to restrict the generic types that conform to the bounds.
+
+#+BEGIN_SRC rust
+  ///
+  /// Default `RunGame` implementations for any concrete type
+  ///
+  impl<T: Raylib + GameLogic + DrawGame> RunGame for T {
+      //
+      // Main game loop, exit when pressing `ESC` button or close window
+      //
+      fn run(&mut self) -> &mut Self {
+          while !self.get_handle().window_should_close() {
+              self.update_tick();
+              self.draw_game();
+          }
+
+          self
+      }
+  }
+#+END_SRC
+
+The example above is talking about:
+
+- Implement the =RunGame= trait for any types generic on =<T>=
+
+- Meanwhile, that particular =<T>= HAS TO implement the following traits as the same time:
+
+    - =Raylib=
+
+    - =GameLogic=
+
+    - =DrawGame=
+
+If the =<T>= misses any conditions above, rust compiler won't happy with that:)
+
+
+** Generic and trait bound syntax sugar
+
+The following generic and trait bound syntaxes are equivalent:
+
+#+BEGIN_SRC rust
+  fn print_info<T: Debug>(item: T) {
+      println!("{item:?}");
+  }
+
+  fn print_info_version_2(item: impl Debug) {
+      println!("{item:?}");
+  }
+
+  fn print_info_version_3<T>(item: T)
+  where
+      T: Debug,
+  {
+      println!("{item:?}");
+  }
+#+END_SRC
+
+You're able to pick the one you like, but the =impl= Trait shorthand can only be used for function arguments, it cannot be used on types of fields or local variables, etc!!!
+
+
+** Monomorphization and static dispatch
+
+Rust monomorphization produces fast code, but it comes at the cost of compile time and binary size. How it works?
+
+For a given generic function like below:
+
+#+BEGIN_SRC rust
+  fn print_info(item: impl Debug) {
+      println!("{item:?}");
+  }
+#+END_SRC
+
+The rust compiler generates the copied function based on the concrete type to call that function:
+
+#+BEGIN_SRC rust
+  print_info(88);
+  print_info("Hello");
+#+END_SRC
+
+For the above function call, rust compiler generates the following function at compile time:
+
+#+BEGIN_SRC rust
+  fn print_info_usize(item: usize) {
+      println!("{item:?}");
+  }
+
+  fn print_info_str(item: &str) {
+      println!("{item:?}");
+  }
+#+END_SRC
+
+And then replace the caller function to:
+
+#+BEGIN_SRC rust
+  print_info_usize(88);
+  print_info_str("Hell");
+#+END_SRC
+
+
+So, you can say generic type only exists when you're coding, they will disappear at compile time, as the generic type will be replaced by the actual concrete type.
+
+And monomorphization is the =static dispatch= and good for the performance, as rust compiler keeps doing its best to optimize the generated code. But the downside is the bigger binary size and longer compile time.
+
+
+** Trait object and dynamically dispatched (polymorphic)
+
+A trait object represents an instance of any type that implements a set of traits. You have to combine the =dyn= keyword to define a =trait object type= on a variable, function parameter or function return type:
+
+#+BEGIN_SRC rust
+  trait GameLogic {
+      fn is_enemy_see_me(&self) -> bool;
+  }
+
+  let _: &dyn GameLogic;
+  let _: Box<dyn GameLogic>;
+  let _: Box<dyn GameLogic + Send + Sync>;
+#+END_SRC
+
+As you can see above, =dyn Trait= has to be defined as the following forms:
+
+- =&dyn TraitName=
+- =Box<dyn TraitName>=
+
+There is no difference between these 2 forms, if you want a stack allocation, then go with =&dyn TraitName=; if you want a heap allocation, then go with the =Box<dyn TraitName>=.
+
+
+So, the question becomes why always have to be either reference or a smart pointer?
+
+That's because any type can implement any trait, which means rust doesn't know the concrete type at compile time, which violates the rust compiler rule:
+
+~Every type must be sized at compile time!!!~
+
+
+For example you have the following functions that accept the trait object as parameter:
+
+#+BEGIN_SRC rust
+  fn check_game_logic(obj: &dyn GameLogic) {
+      if obj.is_enemy_see_me() {
+          // Do something
+      } else {
+          // Do something else
+      }
+  }
+
+  fn check_game_logic_2(obj: Box<dyn GameLogic>) {
+      if obj.is_enemy_see_me() {
+          // Do something
+      } else {
+          // Do something else
+      }
+  }
+#+END_SRC
+
+That's saying those 2 functions accept any concrete type that implements the =GameLogic= trait and the =obj.is_enemy_see_me()= function call will be dynamically dispatched.
+
+So, only a reference (to a =GameLogic= trait object) or a =Box= has a trait object inner type that is considered as a known size: A pointer that either 4 bytes on 32bit or 8 bytes on 64bit!!!
+
+=dyn Trait= is likely to produce smaller binary than =impl Trait= (generic), as the method won’t be duplicated for each concrete type. But the downside is slow performance (compared to static dispatched).
+
+
+One more thing about the =dyn Trait= syntax rule:
+
+=dyn BaseTrait + AutoTrait1 + ... AutoTraitN=
+
+Only one =BaseTrait= can be used, that's why the following examples won't be compiled, as they use more than one =BasedTrait=:
+
+#+BEGIN_SRC rust
+  trait A {}
+  trait B {}
+
+  let _: Box<dyn A + B>;
+  let _: Box<dyn A + dyn B>;
+#+END_SRC
+
+
+** Marker trait and =Sized=
+
+Some traits are called [[https://doc.rust-lang.org/stable/std/marker/index.html][marker traits]] which means you don't need to implement them and you CANNOT implement them, as rust compiler will implement them.
+
+One very important marker trait is called =std::marker::Sized=.
+
+Everything should have a constant size known at compile time, that's restricted by the fundamental architecture (CPU/Memory/OS) to execute the binary code. If there is no size for a variable or a function parameter, then you don't know how much memory to allocate for the function arguments on the stack frame.
+
+There is an exception: the special syntax =?Sized= is used to remove that =everything has to be sized= restriction.
+
+For example the =Box= smart pointer has the following definition:
+
+#+BEGIN_SRC rust
+  Box<T: ?Sized> {}
+#+END_SRC
+
+That's saying the =<T>= inside the =Box= doesn't need to be sized, as you have to allocate the actual memory when you create the inner concrete type with =Box::new()=. So, the =<T>= doesn't need to be restricted as =Sized=, as it does have the known size when allocating on the heap.
+
+For more details about =Memory Management=, plz watch this [[https://www.youtube.com/playlist?list=PLai5B987bZ9BnS7dBlTF9HRop55vYUL7r][video]]
+

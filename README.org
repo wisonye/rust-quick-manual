@@ -5,4 +5,10 @@
 ** [[file:chapters/str-and-string.org][&str and String]]
 ** [[file:chapters/array-and-vec.org][Array, Vec and Iterator]]
 ** [[file:chapters/format-and-print-related.org][Format and print related]]
+** [[file:chapters/pattern-matching.org][Pattern matching]]
 ** [[file:chapters/working-with-bytes.org][Working with bytes]]
+** [[file:chapters/working-with-trait.org][Working with trait]]
+** Enum
+** Error handling
+
+Rust build script

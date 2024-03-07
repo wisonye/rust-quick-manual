@@ -1,0 +1,204 @@
+* Error handling
+
+** =std::result::Result= just a =enum= type:
+
+#+BEGIN_SRC rust
+  pub enum Result<T, E> {
+      Ok(T),
+      Err(E),
+  }
+#+END_SRC
+
+That means you need to provide 2 data types when deal with =Result=, the =T= and =E= can be any type, it doesn't restrict the =E= to the type that implmented the =std::error::Error= trait!!!
+
+For example:
+
+#+BEGIN_SRC rust
+  fn test1() -> Result<String, String> {
+      // Ok("done".to_string())
+      Err("Something is wrong".to_string())
+  }
+
+  fn test2() -> Result<String, usize> {
+      // Ok("done".to_string())
+      Err(9000)
+  }
+
+  fn test3() -> Result<u32, Box<dyn std::error::Error>> {
+      Ok(123)
+  }
+
+  fn main() {
+      let _ = test1();
+      let _ = test2();
+      let _ = test3();
+  }
+
+#+END_SRC
+
+
+** Type alias =Result<T>= without providing =<E>=
+
+#+BEGIN_SRC rust
+  type TcpResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+  fn test4() -> TcpResult<String> {Ok("Connected".to_string())}
+#+END_SRC
+
+
+** How to handle =Result<T,E>=
+
+*** Use pattern matching
+
+#+BEGIN_SRC rust
+  let _ = match test1()  {
+      Ok(v) => v,
+      Err(e) => {
+          println!(">>> Error happend: {}", e.to_string());
+          "Failed".to_string()
+      }
+  };
+#+END_SRC
+
+
+*** Use =is_ok()= and =is_err()=
+
+#+BEGIN_SRC rust
+  if test1().is_ok()  {
+      // do something
+  };
+
+  if test1().is_err()  {
+      // do something
+  };
+#+END_SRC
+
+
+*** Getting back result values or mapping values
+
+#+BEGIN_SRC rust
+  let test_result = test1();
+
+  //
+  // Get back value
+  //
+  let test_value = if test_result.is_ok()  {
+      test_result.unwrap()
+  } else {
+      test_result.err().unwrap()
+  };
+
+  //
+  // Value mapping
+  //
+  let test_value_2 = match test1() {
+      Ok(_) => true,
+      Err(_) => false,
+  };
+#+END_SRC
+
+
+Also, there are a few very usefule =unwrap= versions:
+
+#+BEGIN_SRC rust
+  //
+  // unwrap if `ok` or map to other value if `err`
+  //
+  let _ = test2().unwrap_or(888.to_string());
+
+  //
+  // unwrap if `ok` or map to other value by a closure if `err`
+  //
+  let _ = test2().unwrap_or_else(|_| 999.to_string());
+#+END_SRC
+
+
+*** Using =expect=
+
+If =Ok=, get back the value. Otherwise, call =panic!()= with customized error message:
+
+#+BEGIN_SRC rust
+  let value = function_return_result().expect("customized error here");
+#+END_SRC
+
+
+*** Use =?= to propagate the =Err()= to outside, let them to decide how to deal with the error case.
+
+=?= means unwrap the value if that's =Ok=, otherwise, return the =Err()=!!!
+
+=?= can be chained together to make your code more easy to read.
+
+#+BEGIN_SRC rust
+  fn read_file_content(file_name: &str) -> Result<String, std::io::Error> {
+      let mut content = String::new();
+      std::fs::File::open(file_name)?.read_to_string(&mut content)?;
+      Ok(content)
+  }
+
+  //
+  // Call the function above and handle the `Result`
+  //
+  let file_content = match read_file_content("temp.txt") {
+      Ok(value) => value,
+      Err(e) => format!("Error happen: {:?}", e),
+  };
+#+END_SRC
+
+
+
+** Custom error: implement =std::error::Error= trait
+
+#+BEGIN_SRC rust
+  pub trait Error: Debug + Display {
+      // Provided methods
+      fn source(&self) -> Option<&(dyn Error + 'static)> { ... }
+      fn description(&self) -> &str { ... }
+      fn cause(&self) -> Option<&dyn Error> { ... }
+      fn provide<'a>(&'a self, request: &mut Request<'a>) { ... }
+  }
+#+END_SRC
+
+As you can see, if any type =<T>= that implemented =Error=, then it has to be implemented =Debug= trait and =Display= trait as well.
+
+
+#+BEGIN_SRC rust
+  //
+  // Use default `Debug` trait implementation
+  //
+  #[derive(Debug)]
+  struct ParseIpAddressError {
+      fail_ip: String,
+  }
+
+  //
+  // Implment `Display` trait
+  //
+  impl std::fmt::Display for ParseIpAddressError {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+          write!(
+              f,
+              "Fail to parse IP address from value '{:?}'",
+              self.fail_ip
+          )
+      }
+  }
+
+  fn main() {
+      let sample_error = ParseIpAddressError {
+          fail_ip: "a.b.c.d".to_string(),
+      };
+
+      println!(">>> sample_error: {sample_error:#?}");
+      println!(">>> sample_error: {sample_error}");
+  }
+#+END_SRC
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> sample_error: ParseIpAddressError {
+      fail_ip: "a.b.c.d",
+  }
+  >>> sample_error: Fail to parse IP address from value '"a.b.c.d"'
+#+END_SRC
+
