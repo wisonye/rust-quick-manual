@@ -9,6 +9,6 @@
 ** [[file:chapters/working-with-bytes.org][Working with bytes]]
 ** [[file:chapters/working-with-trait.org][Working with trait]]
 ** Enum
-** Error handling
+** [[file:chapters/error-handling.org][Error handling]]
 
 Rust build script
