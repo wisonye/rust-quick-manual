@@ -13,4 +13,5 @@
 ** [[file:chapters/closure.org][Closure (Anonymous function)]]
 ** [[file:chapters/implement-iterator-trait.org][Implment =Iterator= trait]]
 ** [[file:chapters/implement-iterator-trait-in-async-way.org][Implement =Iterator= trait in async way]]
+** [[file:chapters/sharing-data-between-threads-or-tasks.org][Sharing data between threads or tasks]]
 Rust build script

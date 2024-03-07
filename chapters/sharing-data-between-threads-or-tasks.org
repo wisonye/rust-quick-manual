@@ -1,0 +1,241 @@
+* Sharing data between threads or tasks
+
+** Share by value: move value ownership
+
+Because of the =Ownership= rules, you can't just share a value between different threads (for example, the =Main Thread= and any =Spawned Thread=), you have to use =move= keyword to move the =Ownership= into the thread's closure or async task:
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  struct Person {
+      pub name: String,
+  }
+
+  fn main() {
+      let wison = Person {
+          name: String::from("Wison Ye"),
+      };
+
+      //
+      // You have to use `move` here, otherwise, won't compile.
+      // After using `move`, `wison`'s ownership will be taken by
+      // the spawned thread closure!!!
+      //
+      let _ = std::thread::spawn(move || {
+          println!(">>> Print from spawned thread - name: {}", wison.name);
+      })
+      .join();
+
+      //
+      // Won't work anymore, as `wison` has been  moved above!!!
+      //
+      // println!("Try to use name: {}", wison.name);
+  }
+#+END_SRC
+
+
+** Share by reference
+
+But what if you **DO NOT** want to move, you just want to share the same value/instance between different =threads= or =tasks=???.
+
+The answer is to use =std::sync::Arc= (Atomic Reference Counted) to make that happen.
+
+For example, you want to share the same =Person= instance below in multiple =Async Tasks=:
+
+#+BEGIN_SRC rust
+#[derive(Debug)]
+struct Person {
+    pub name: String,
+}
+
+fn main() {
+    //
+    // Wrap the instance inside `Arc`
+    //
+    let wison = std::sync::Arc::new(Person {
+        name: String::from("Wison Ye"),
+    });
+
+    //
+    // Create and run a few thread inside a temp thread pool.
+    // All threads share the same `Person` instance reference!!!
+    //
+    let mut thread_pool = Vec::<std::thread::JoinHandle<_>>::new();
+    for index in 0..5 {
+        //
+        // Clone `Arc` for sharing the same inner instance reference
+        //
+        let person_ref = std::sync::Arc::clone(&wison);
+
+        let new_thread = std::thread::spawn(move || {
+            println!(
+                ">>> Print from thread {index} - person's name: {}",
+                person_ref.name
+            );
+        });
+
+        thread_pool.push(new_thread);
+    }
+
+    //
+    // Wait for all threads to finish
+    //
+    for thread in thread_pool {
+        let _ = thread.join();
+    }
+#+END_SRC
+
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> Print from thread 0 - person's name: Wison Ye
+  >>> Print from thread 1 - person's name: Wison Ye
+  >>> Print from thread 3 - person's name: Wison Ye
+  >>> Print from thread 2 - person's name: Wison Ye
+  >>> Print from thread 4 - person's name: Wison Ye
+#+END_SRC
+
+
+** Exclusive share by using =std::sync::Mute=
+
+In some cases, you want the same instance can be accessed by multiple thread safely. Also, you ask for =Only one thread can be accessed/changed the same instance at any given time=. This is what =std::sync::Mutex= can offer.
+
+It works like a =Lock=, you lock something inside there, and only one person can use the key to open it at any given time. 
+
+So, each thread has to acquire exclusive permission to open it before accessing the thing inside the =Mutex=.
+
+After a thread acquired the exclusive permission, all other threads have to wait (on the queue) before the permission has been released.
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  struct Person {
+      pub name: String,
+  }
+
+  impl Person {
+      pub fn change_name(&mut self, new_name: &str) {
+          self.name = String::from(new_name);
+      }
+  }
+
+  fn main() {
+      //
+      // You want the single `Person` instance can be accessed by only one
+      // thread in any given time, that's why you need to wrap it into a
+      // `Mutex`.
+      //
+      // Because you need to pass the `Mutex` instance in different threads,
+      // that's why you have to wrap it into an `Arc` (smart pointer) instance.
+      //
+      let share_person = std::sync::Arc::new(std::sync::Mutex::new(Person {
+          name: "Wison Ye".to_string(),
+      }));
+      println!(
+          ">>> share_person type: {}, data: {share_person:#?}",
+          std::any::type_name_of_val(&share_person)
+      );
+
+      //
+      // Create and run a few thread inside a temp thread pool.
+      // All threads share the same `Person` instance reference!!!
+      //
+      let mut thread_pool = Vec::<std::thread::JoinHandle<_>>::new();
+      for index in 0..5 {
+          //
+          // Clone `Arc` for sharing inner instance reference
+          //
+          let person_ref = std::sync::Arc::clone(&share_person);
+
+          let new_thread = std::thread::spawn(move || {
+              //
+              // Before you can access `Person` inside `Mutex`, you have to acquire
+              // the exclusive permission first by declaring `mutex is locked`.
+              //
+              let mut origin_person_ref = person_ref.lock().unwrap();
+
+              //
+              // Mutate it
+              //
+              let new_name = format!("{}_{}", origin_person_ref.name, index);
+              origin_person_ref.change_name(&new_name);
+
+              println!(
+                  "Thread {} | person name charged to: {}",
+                  index, origin_person_ref.name
+              );
+
+              //
+              // You don't need to release the permission explicitly, as it
+              // will be released (unlocked the mutex) after out of scope.
+              //
+          });
+
+          thread_pool.push(new_thread);
+      }
+
+      //
+      // Wait for all threads to finish
+      //
+      for thread in thread_pool {
+          let _ = thread.join();
+      }
+  }
+#+END_SRC    
+
+
+Output:
+
+#+BEGIN_SRC bash
+  >>> share_person type: alloc::sync::Arc<std::sync::mutex::Mutex<temp::Person>>, data: Mutex {
+      data: Person {
+          name: "Wison Ye",
+      },
+      poisoned: false,
+      ..
+  }
+  Thread 0 | person name charged to: Wison Ye_0
+  Thread 3 | person name charged to: Wison Ye_0_3
+  Thread 1 | person name charged to: Wison Ye_0_3_1
+  Thread 4 | person name charged to: Wison Ye_0_3_1_4
+  Thread 2 | person name charged to: Wison Ye_0_3_1_4_2
+#+END_SRC
+
+
+** Read-write lock for =More read less write= situation
+
+=std::sync::Mutex= will cause performance issue, as only one thread can touch the locked instance at any given time (even you just want to read it).
+
+If you want better performance in =More read less write= case, you should try [[https://doc.rust-lang.org/stable/std/sync/struct.RwLock.html][std::sync::RwLock]]!!!
+
+
+** Channel 
+
+Another solution to communicate safety in multi-threading is =Channel=. =futures::channel::mpsc::unbounded= provides a =MPSC= channel which stands for =Multiple Producer Single Consumer=.
+
+It can create a =channel= which return a =Transmitter/Sender= and a =Receiver=. The =Transmitter/Sender= can be copied many times and pass into many threads/tasks.
+
+=Sender.send()= can send back any data(event), the =receiver= is a centralized point to consume it. Then you don't need to consider the case about how to copy or share a very difficult copy or lifetime value.
+
+#+BEGIN_SRC rust
+  // Create report channel and init stuff needed
+  let (report_sender, report_receiver) = unbounded();
+
+  // Sender can be copied and pass into any thread/task
+  let report_sender_for_tcp_server = report_sender.clone();
+  let report_sender_for_sessions = report_sender.clone();
+
+  // 
+  let mut report = HealthReport::new()
+      .load_config()
+      .set_event_bus(report_receiver)
+      .set_event_sender(report_sender);
+
+  // Start Async event bus in separated task
+  let heal_report_task_list = task::spawn(async move {
+      // `report.run_event_bus()` actually is a `receiver`
+      // loop to consume data/event sent by the `Sender`
+      // above.
+      let _ = report.run_event_bus().await;
+  });
+#+END_SRC
+
