@@ -1,0 +1,93 @@
+* Implment =Iterator= trait
+
+** =std::iterator::Iterator=
+
+#+BEGIN_SRC rust
+  pub trait Iterator {
+     type Item;
+
+     // Ingnore the reust 76 methods like `map/filter/take/etc...`
+  }
+#+END_SRC
+
+
+** Declare a struct
+
+#+BEGIN_SRC rust
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  struct Person<'p> {
+      first_name: &'p str,
+      last_name: &'p str,
+      age: u8,
+  }
+
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  struct PersonList<'pl> {
+      list: Vec<Person<'pl>>,
+      filter_index: usize,
+  }
+
+  impl<'pl> PersonList<'pl> {
+      fn from(list: Vec<Person>) -> PersonList {
+          PersonList {
+              list,
+              filter_index: 0,
+          }
+      }
+  }
+#+END_SRC
+
+
+** Implement =Iterator= trait
+
+#+BEGIN_SRC rust
+  //
+  // Let's implement `Iterator` trait :)
+  //
+  impl<'pl> Iterator for PersonList<'pl> {
+      //
+      // You need to provide the `Item` type alias
+      //
+      type Item = Person<'pl>;
+
+      //
+      // Must implement method to go throguh all items
+      //
+      fn next(&mut self) -> Option<Self::Item> {
+          if self.filter_index + 1 <= self.list.len() {
+              let current_matched_person = self.list[self.filter_index].clone();
+              self.filter_index += 1;
+
+              Some(current_matched_person)
+          } else {
+              None
+          }
+      }
+  }
+#+END_SRC
+
+
+** Write test code
+
+#+BEGIN_SRC rust
+  fn main() {
+      let original_person_list = vec![
+          Person {
+              first_name: "Wison",
+              last_name: "Ye",
+              age: 42,
+          },
+          Person {
+              first_name: "Mike",
+              last_name: "Ye",
+              age: 10,
+          },
+      ];
+
+      let person_list = PersonList::from(original_person_list);
+
+      for matched_person in person_list.filter(|temp_person| temp_person.last_name == "Ye") {
+          println!("matched_person: {:#?}", matched_person);
+      }
+  }
+#+END_SRC
