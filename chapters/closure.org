@@ -1,0 +1,101 @@
+* =Closure= (Anonymous function)
+
+** Closure without any param:
+
+#+BEGIN_SRC rust
+  let command_sender = || println!("Command sender is called");
+  command_sender();
+#+END_SRC
+
+
+** Closure with params:
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  struct CommandToSend {
+      name: String,
+      seq_no: u16
+  }
+
+  let command_sender_with_param = |command: CommandToSend| println!("Command sender is called with command: {:?}", command);
+  command_sender_with_param(CommandToSend {name: "Login".to_string(), seq_no: 8888});
+  command_sender_with_param(CommandToSend {name: "Logout".to_string(), seq_no: 9999});
+#+END_SRC
+
+
+** Closure params always pass as =reference= rather than pass with =value= which can avoid moving the =ownership=.
+
+The following closure to prove it passes with =reference=:
+
+#+BEGIN_SRC rust
+  #[derive(Debug)]
+  struct CommandToSend {
+      name: String,
+      seq_no: u16
+  }
+
+  let temp_command = CommandToSend { name: "Seal".to_string(), seq_no: 1234 };
+  let temp_fn = |command: &CommandToSend| {
+      //
+      // `de-referencing` the struct instance and access the field inside it.
+      //
+      let temp_name = &((*command).name);
+      println!("\n'temp_name' comes from the de-referenced struct instance, it proves pass by 'reference': {}", temp_name);
+  };
+
+  temp_fn(&temp_command);
+
+  println!("'temp_command' still live after calling the fn above: {:?}", temp_command);
+
+  //
+  // Also, you're able to use the `&mut` to modify it:
+  //
+  let mut temp_command_2 = CommandToSend { name: "Unseal".to_string(), seq_no: 5678 };
+  let temp_fn_will_modify = |command: &mut CommandToSend| {
+      // You `de-referencing` the struct instance and mutate the field inside it.
+      let temp_name = (&mut (*command).name) as &mut String;
+      temp_name.push_str("-> I modified.");
+      println!("\n'temp_name' comes from the de-referenced struct instance, it proves pass by 'reference': {}", temp_name);
+  };
+
+  temp_fn_will_modify(&mut temp_command_2);
+
+  println!("'temp_command_2' still live after calling the fn above: {:?}", temp_command_2);
+#+END_SRC
+
+
+** Closure can be defined as function explicitly then you can call it inside another function:
+
+#+BEGIN_SRC rust
+  //
+  // A function that accepts another function as parameter
+  //
+  fn run_closure<F: Fn()>(f: F) {
+      f()
+  }
+
+  //
+  // Another form to declare callable function parameter
+  //
+  fn run_command_closure<F>(f: F, command: &CommandToSend)
+  where
+      F: Fn(&CommandToSend),
+  {
+      f(command)
+  }
+
+  let temp_command_3 = CommandToSend {
+      name: "Location Upload".to_string(),
+      seq_no: 6666,
+  };
+
+  let temp_fn_to_be_run = |command: &CommandToSend| {
+      println!(
+          "\n'temp_fn_to_be_run' called by another function with param: {:#?}",
+          command
+      )
+  };
+
+  run_command_closure(temp_fn_to_be_run, &temp_command_3);
+#+END_SRC
+

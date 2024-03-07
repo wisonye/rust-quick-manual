@@ -10,5 +10,5 @@
 ** [[file:chapters/working-with-trait.org][Working with trait]]
 ** [[file:chapters/enum.org][Enum]]
 ** [[file:chapters/error-handling.org][Error handling]]
-
+** [[file:chapters/closure.org][Closure (Anonymous function)]]
 Rust build script
