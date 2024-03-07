@@ -1,0 +1,16 @@
+* How to pass =rustc= flags via =cargo build=
+
+If you want to put some =rustc= specificed compiler options to =cargo build=, you can use =RUSTFLAGS= env var like this:
+
+#+BEGIN_SRC bash
+  RUSTFLAGS='...' cargo build
+#+END_SRC
+
+
+For example, if you want to compile current rust project to =musl linux= target:
+
+#+BEGIN_SRC bash
+  RUSTFLAGS='-C relocation-model=static -C strip=symbols' cargo build \
+    --release \
+    --target x86_64-unknown-linux-musl
+#+END_SRC

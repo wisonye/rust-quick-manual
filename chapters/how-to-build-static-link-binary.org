@@ -1,0 +1,35 @@
+* How to build static link binary
+
+** Option 1
+
+#+BEGIN_SRC bash
+  rustc -C target-feature=+crt-static -C strip=symbols src/main.rs
+#+END_SRC
+
+
+** Option 2
+
+#+BEGIN_SRC bash
+  RUSTFLAGS='-C target-feature=+crt-static -C strip=symbols' cargo build --release
+#+END_SRC
+
+
+** Option 3
+
+Provide a =.cargo/config.toml= with the following settings:
+
+#+BEGIN_SRC toml
+  [build]
+  target = "x86_64-unknown-freebsd"
+
+  [target.'cfg(target_os = "freebsd")']
+  rustflags = ["-C", "target-feature=+crt-static", "-C", "strip=symbols"]
+#+END_SRC
+
+
+[[https://doc.rust-lang.org/reference/linkage.html#static-and-dynamic-c-runtimes][Here]] is the =static and dynamic C runtimes=.
+
+[[https://doc.rust-lang.org/reference/conditional-compilation.html#target_os][Here]] is the supported =target_os=.
+
+[[https://doc.rust-lang.org/nightly/rustc/platform-support.html][Here]] is the supported target triple.
+

@@ -14,4 +14,8 @@
 ** [[file:chapters/implement-iterator-trait.org][Implment =Iterator= trait]]
 ** [[file:chapters/implement-iterator-trait-in-async-way.org][Implement =Iterator= trait in async way]]
 ** [[file:chapters/sharing-data-between-threads-or-tasks.org][Sharing data between threads or tasks]]
+** How to
+*** [[file:chapters/how-to-pass-rustc-flags-via-cargo-build.org][How to pass rustc flags via cargo build]]
+*** [[file:chapters/how-to-build-static-link-binary.org][How to build static link binary]]
+
 Rust build script
