@@ -1,0 +1,96 @@
+* Implment =Iterator= trait in async way
+
+** =std::iterator::Iterator=
+
+#+BEGIN_SRC rust
+  pub trait Iterator {
+     type Item;
+
+     // Ingnore the reust 76 methods like `map/filter/take/etc...`
+  }
+#+END_SRC
+
+
+** Declare a struct
+
+#+BEGIN_SRC rust
+  use async_std::prelude::StreamExt;
+  use async_std::stream::Stream;
+  use async_std::task::{Context, Poll};
+  use std::pin::Pin;
+
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  struct Person<'p> {
+      first_name: &'p str,
+      last_name: &'p str,
+      age: u8,
+  }
+
+  #[derive(Debug, Clone, PartialEq, Eq)]
+  struct AsyncPersonList<'pl> {
+      list: Vec<Person<'pl>>,
+      iterator_index: usize,
+  }
+
+  impl<'pl> AsyncPersonList<'pl> {
+      fn from(list: Vec<Person>) -> AsyncPersonList {
+          AsyncPersonList { list, iterator_index: 0 }
+      }
+  }
+#+END_SRC
+
+
+** Implement =Iterator= trait
+
+#+BEGIN_SRC rust
+  ///
+  /// Let's implement `Stream` trait :)
+  ///
+  impl<'pl> Stream for AsyncPersonList<'pl> {
+      type Item = Person<'pl>;
+
+      fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
+          if self.iterator_index + 1 <= self.list.len() {
+              let current_matched_person = self.list[self.iterator_index].clone();
+              self.iterator_index += 1;
+
+              Poll::Ready(Some(current_matched_person))
+          } else {
+              // Must return `Poll::Read(None)` you reach the end of the stream.
+              Poll::Ready(None)
+          }
+      }
+  }
+#+END_SRC
+
+
+** Write test code
+
+#+BEGIN_SRC rust
+  #[async_std::main]
+  async fn main() -> FutureResult<()> {
+      let original_person_list = vec![
+          Person {
+              first_name: "Wison",
+              last_name: "Ye",
+              age: 42,
+          },
+          Person {
+              first_name: "Mike",
+              last_name: "Ye",
+              age: 10,
+          },
+      ];
+
+      // Create `Stream` instance, and you can call any extends method from 
+      // `async_std::prelude::StreamExt`. Like `take`, `takeWhile`, etc.
+      let mut async_person_list = AsyncPersonList::from(original_person_list).take(1);
+
+      // Then you can call `stream.next().await` to wait for the async value in stream
+      while let Some(temp_person) = async_person_list.next().await {
+          println!("temp_person: {:?}", temp_person);
+      }
+
+      Ok(())
+  }
+#+END_SRC
